@@ -31,7 +31,7 @@ const Contact = () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/v1/contact/send`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://auction-platform-backend-8dj2.onrender.com'}/api/v1/contact/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
