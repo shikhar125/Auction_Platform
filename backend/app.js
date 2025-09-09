@@ -19,11 +19,15 @@ config({ path: './.env' });
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", process.env.FRONTEND_URL],
-    methods: ["POST", "GET", "PUT", "DELETE"],
+    origin: [ "http://localhost:5173", process.env.FRONTEND_URL ],
+    methods: ["POST", "GET", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
+
 
 app.use(cookieParser());
 app.use(express.json());
@@ -42,9 +46,14 @@ app.use("/api/v1/commission", commissionRouter);
 app.use("/api/v1/superadmin", superAdminRouter);
 app.use("/api/v1/contact", contactRouter);
 
+
 endedAuctionCron();
 verifyCommissionCron();
+
+
 connection();
+
+
 app.use(errorMiddleware);
 
 export default app;
