@@ -1,17 +1,19 @@
 import { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import SideDrawer from "./layout/SideDrawer";
-import Home from "./pages/Home";
+import { fetchLeaderboard, fetchUser } from "./store/slices/userSlice";
+import { getAllAuctionItems } from "./store/slices/auctionSlice";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+// Pages
+import Home from "./pages/Home";
 import SignUp from "./pages/SignUp";
 import Login from "./pages/Login";
 import SubmitCommission from "./pages/SubmitCommission";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchLeaderboard, fetchUser } from "./store/slices/userSlice";
 import HowItWorks from "./pages/HowItWorks";
 import About from "./pages/About";
-import { getAllAuctionItems } from "./store/slices/auctionSlice";
 import Leaderboard from "./pages/Leaderboard";
 import Auctions from "./pages/Auctions";
 import AuctionItem from "./pages/AuctionItem";
@@ -22,26 +24,32 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Contact from "./pages/Contact";
 import UserProfile from "./pages/UserProfile";
 
-
-
 const App = () => {
   const dispatch = useDispatch();
+  const { isAuthenticated, loading } = useSelector((state) => state.user);
   const isDarkMode = useSelector((state) => state.theme.isDarkMode);
 
   useEffect(() => {
-    dispatch(fetchUser());
+    const token = localStorage.getItem("token");
+    if (token) {
+      dispatch(fetchUser());
+    }
     dispatch(getAllAuctionItems());
     dispatch(fetchLeaderboard());
   }, [dispatch]);
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (isDarkMode) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    if (isDarkMode) root.classList.add("dark");
+    else root.classList.remove("dark");
   }, [isDarkMode]);
+
+  // ✅ Protected Route wrapper
+  const ProtectedRoute = ({ children }) => {
+    if (loading) return <div>Loading...</div>;
+    if (!isAuthenticated) return <Navigate to="/login" />;
+    return children;
+  };
 
   return (
     <Router>
@@ -49,19 +57,31 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/sign-up" element={<SignUp />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/submit-commission" element={<SubmitCommission />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
+        <Route path="/submit-commission" element={
+          <ProtectedRoute><SubmitCommission /></ProtectedRoute>
+        } />
         <Route path="/how-it-works-info" element={<HowItWorks />} />
         <Route path="/about" element={<About />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/auctions" element={<Auctions />} />
         <Route path="/auction/item/:id" element={<AuctionItem />} />
-        <Route path="/create-auction" element={<CreateAuction />} />
-        <Route path="/view-my-auctions" element={<ViewMyAuctions />} />
-        <Route path="/auction/details/:id" element={<ViewAuctionDetails />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/create-auction" element={
+          <ProtectedRoute><CreateAuction /></ProtectedRoute>
+        } />
+        <Route path="/view-my-auctions" element={
+          <ProtectedRoute><ViewMyAuctions /></ProtectedRoute>
+        } />
+        <Route path="/auction/details/:id" element={
+          <ProtectedRoute><ViewAuctionDetails /></ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute><Dashboard /></ProtectedRoute>
+        } />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/me" element={<UserProfile />} />
+        <Route path="/me" element={
+          <ProtectedRoute><UserProfile /></ProtectedRoute>
+        } />
       </Routes>
       <ToastContainer position="top-right" />
     </Router>
