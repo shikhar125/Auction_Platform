@@ -1,4 +1,4 @@
-import { login } from "@/store/slices/userSlice";
+import { login, fetchUser } from "@/store/slices/userSlice";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -8,9 +8,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const { loading, isAuthenticated, user, error } = useSelector(
-    (state) => state.user
-  );
+  const { loading, isAuthenticated, user } = useSelector((state) => state.user);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -21,23 +19,19 @@ const Login = () => {
       toast.error("Please enter both email and password");
       return;
     }
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("password", password);
-    dispatch(login(formData));
+    const data = { email, password }; // send JSON instead of FormData
+    dispatch(login(data));
   };
 
-  // ✅ Save token to localStorage after login
+  // ✅ After login, fetch user details and save token
   useEffect(() => {
     if (isAuthenticated && user?.token) {
-      localStorage.setItem("token", user.token); // important
-      toast.success("Login Successful!");
-      navigate("/"); // redirect after login
+      localStorage.setItem("token", user.token); // Save token
+      dispatch(fetchUser()); // Fetch user profile
+      toast.success("Login successful!");
+      navigate("/"); // redirect to home
     }
-    if (error) {
-      toast.error(error);
-    }
-  }, [isAuthenticated, user, error, navigate]);
+  }, [isAuthenticated, user, dispatch, navigate]);
 
   return (
     <section className="w-full ml-0 m-0 h-fit px-5 pt-20 lg:pl-[320px] flex flex-col min-h-screen py-4 justify-center">
