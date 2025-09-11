@@ -4,16 +4,17 @@ import { User } from "../models/userSchema.js";
 import { v2 as cloudinary } from "cloudinary";
 import { generateToken } from "../utils/jwtToken.js";
 
+// ✅ Register user
 export const register = catchAsyncErrors(async (req, res, next) => {
   if (!req.files || Object.keys(req.files).length === 0) {
-    return next(new ErrorHandler("Profile Image Required.", 400));
+    return next(new ErrorHandler("Profile Image is required.", 400));
   }
 
   const { profileImage } = req.files;
 
   const allowedFormats = ["image/png", "image/jpeg", "image/webp"];
   if (!allowedFormats.includes(profileImage.mimetype)) {
-    return next(new ErrorHandler("File format not supported.", 400));
+    return next(new ErrorHandler("Profile image format not supported.", 400));
   }
 
   const {
@@ -31,44 +32,30 @@ export const register = catchAsyncErrors(async (req, res, next) => {
   } = req.body;
 
   if (!userName || !email || !phone || !password || !address || !role) {
-    return next(new ErrorHandler("Please fill full form.", 400));
+    return next(new ErrorHandler("Please fill all required fields.", 400));
   }
+
   if (role === "Auctioneer") {
-    if (!bankAccountName || !bankAccountNumber || !bankName) {
-      return next(
-        new ErrorHandler("Please provide your full bank details.", 400)
-      );
-    }
-    if (!easypaisaAccountNumber) {
-      return next(
-        new ErrorHandler("Please provide your easypaisa account number.", 400)
-      );
-    }
-    if (!paypalEmail) {
-      return next(new ErrorHandler("Please provide your paypal email.", 400));
+    if (!bankAccountName || !bankAccountNumber || !bankName || !easypaisaAccountNumber || !paypalEmail) {
+      return next(new ErrorHandler("Please provide full bank and payment details for Auctioneer.", 400));
     }
   }
-  const isRegistered = await User.findOne({ email }).select("+password");
-  if (isRegistered) {
-    return next(new ErrorHandler("User already registered.", 400));
+
+  const existingUser = await User.findOne({ email }).select("+password");
+  if (existingUser) {
+    return next(new ErrorHandler("User already registered with this email.", 400));
   }
-  const cloudinaryResponse = await cloudinary.uploader.upload(
-    profileImage.tempFilePath,
-    {
+
+  let cloudResponse;
+  try {
+    cloudResponse = await cloudinary.uploader.upload(profileImage.tempFilePath, {
       folder: "MERN_AUCTION_PLATFORM_USERS",
-    }
-  );
-  if (!cloudinaryResponse || cloudinaryResponse.error) {
-    console.error(
-      "Cloudinary upload error:",
-      cloudinaryResponse.error || "Unknown cloudinary error."
-    );
-    console.error("Cloudinary response:", cloudinaryResponse);
-    console.error("Temp file path:", profileImage.tempFilePath);
-    return next(
-      new ErrorHandler("Failed to upload profile image to cloudinary.", 500)
-    );
+    });
+  } catch (err) {
+    console.error("Cloudinary upload error:", err);
+    return next(new ErrorHandler("Failed to upload profile image.", 500));
   }
+
   const user = await User.create({
     userName,
     email,
@@ -77,73 +64,69 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     address,
     role,
     profileImage: {
-      public_id: cloudinaryResponse.public_id,
-      url: cloudinaryResponse.secure_url,
+      public_id: cloudResponse.public_id,
+      url: cloudResponse.secure_url,
     },
     paymentMethods: {
-      bankTransfer: {
-        bankAccountNumber,
-        bankAccountName,
-        bankName,
-      },
-      easypaisa: {
-        easypaisaAccountNumber,
-      },
-      paypal: {
-        paypalEmail,
-      },
+      bankTransfer: { bankAccountNumber, bankAccountName, bankName },
+      easypaisa: { easypaisaAccountNumber },
+      paypal: { paypalEmail },
     },
   });
-  generateToken(user, "User Registered.", 201, res);
+
+  generateToken(user, "User registered successfully.", 201, res);
 });
 
+// ✅ Login user
 export const login = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
+
   if (!email || !password) {
-    return next(new ErrorHandler("Please fill full form."));
+    return next(new ErrorHandler("Please provide email and password.", 400));
   }
+
   const user = await User.findOne({ email }).select("+password");
   if (!user) {
     return next(new ErrorHandler("Invalid credentials.", 400));
   }
-  const isPasswordMatch = await user.comparePassword(password);
-  if (!isPasswordMatch) {
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
     return next(new ErrorHandler("Invalid credentials.", 400));
   }
-  generateToken(user, "Login successfully.", 200, res);
+
+  generateToken(user, "Login successful.", 200, res);
 });
 
-export const getProfile = catchAsyncErrors(async (req, res, next) => {
-  const user = req.user;
+// ✅ Get logged in user profile
+export const getProfile = catchAsyncErrors(async (req, res) => {
+  if (!req.user) return next(new ErrorHandler("User not found.", 404));
+
   res.status(200).json({
     success: true,
-    user,
+    user: req.user,
   });
 });
 
-export const logout = catchAsyncErrors(async (req, res, next) => {
+// ✅ Logout user
+export const logout = catchAsyncErrors(async (req, res) => {
   res
     .status(200)
     .cookie("token", "", {
       expires: new Date(Date.now()),
       httpOnly: true,
     })
-    .json({
-      success: true,
-      message: "Logout Successfully.",
-    });
+    .json({ success: true, message: "Logged out successfully." });
 });
 
+// ✅ Fetch leaderboard
 export const fetchLeaderboard = catchAsyncErrors(async (req, res, next) => {
   try {
     const users = await User.find({ moneySpent: { $gt: 0 } });
     const leaderboard = users.sort((a, b) => b.moneySpent - a.moneySpent);
-    res.status(200).json({
-      success: true,
-      leaderboard,
-    });
-  } catch (error) {
-    console.error("Error fetching leaderboard:", error);
+    res.status(200).json({ success: true, leaderboard });
+  } catch (err) {
+    console.error("Leaderboard fetch error:", err);
     return next(new ErrorHandler("Failed to fetch leaderboard.", 500));
   }
 });
