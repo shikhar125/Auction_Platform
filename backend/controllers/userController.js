@@ -74,7 +74,20 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     },
   });
 
-  generateToken(user, "User registered successfully.", 201, res);
+  // ✅ Generate token for frontend
+  const token = generateToken(user);
+
+  res.status(201).json({
+    success: true,
+    message: "User registered successfully.",
+    user: {
+      _id: user._id,
+      userName: user.userName,
+      email: user.email,
+      role: user.role,
+      token,
+    },
+  });
 });
 
 // ✅ Login user
@@ -95,38 +108,4 @@ export const login = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Invalid credentials.", 400));
   }
 
-  generateToken(user, "Login successful.", 200, res);
-});
-
-// ✅ Get logged in user profile
-export const getProfile = catchAsyncErrors(async (req, res) => {
-  if (!req.user) return next(new ErrorHandler("User not found.", 404));
-
-  res.status(200).json({
-    success: true,
-    user: req.user,
-  });
-});
-
-// ✅ Logout user
-export const logout = catchAsyncErrors(async (req, res) => {
-  res
-    .status(200)
-    .cookie("token", "", {
-      expires: new Date(Date.now()),
-      httpOnly: true,
-    })
-    .json({ success: true, message: "Logged out successfully." });
-});
-
-// ✅ Fetch leaderboard
-export const fetchLeaderboard = catchAsyncErrors(async (req, res, next) => {
-  try {
-    const users = await User.find({ moneySpent: { $gt: 0 } });
-    const leaderboard = users.sort((a, b) => b.moneySpent - a.moneySpent);
-    res.status(200).json({ success: true, leaderboard });
-  } catch (err) {
-    console.error("Leaderboard fetch error:", err);
-    return next(new ErrorHandler("Failed to fetch leaderboard.", 500));
-  }
-});
+  // ✅ G
