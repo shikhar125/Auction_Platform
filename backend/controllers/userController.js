@@ -4,7 +4,7 @@ import { User } from "../models/userSchema.js";
 import { v2 as cloudinary } from "cloudinary";
 import { generateToken } from "../utils/jwtToken.js";
 
-// ✅ Register user
+//  Register user
 export const register = catchAsyncErrors(async (req, res, next) => {
   if (!req.files || Object.keys(req.files).length === 0) {
     return next(new ErrorHandler("Profile Image is required.", 400));
@@ -74,7 +74,7 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     },
   });
 
-  // ✅ Generate token for frontend
+  //  Generate token for frontend
   const token = generateToken(user);
 
   res.status(201).json({
@@ -90,7 +90,7 @@ export const register = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-// ✅ Login user
+// Login user
 export const login = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -108,4 +108,51 @@ export const login = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Invalid credentials.", 400));
   }
 
-  // ✅ G
+  //  Generate token
+  const token = generateToken(user);
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful.",
+    user: {
+      _id: user._id,
+      userName: user.userName,
+      email: user.email,
+      role: user.role,
+      token,
+    },
+  });
+});
+
+//  Get logged in user profile
+export const getProfile = catchAsyncErrors(async (req, res, next) => {
+  if (!req.user) return next(new ErrorHandler("User not found.", 404));
+
+  res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+});
+
+//  Logout user
+export const logout = catchAsyncErrors(async (req, res, next) => {
+  res
+    .status(200)
+    .cookie("token", "", {
+      expires: new Date(Date.now()),
+      httpOnly: true,
+    })
+    .json({ success: true, message: "Logged out successfully." });
+});
+
+//  Fetch leaderboard
+export const fetchLeaderboard = catchAsyncErrors(async (req, res, next) => {
+  try {
+    const users = await User.find({ moneySpent: { $gt: 0 } });
+    const leaderboard = users.sort((a, b) => b.moneySpent - a.moneySpent);
+    res.status(200).json({ success: true, leaderboard });
+  } catch (err) {
+    console.error("Leaderboard fetch error:", err);
+    return next(new ErrorHandler("Failed to fetch leaderboard.", 500));
+  }
+});
