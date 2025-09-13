@@ -6,7 +6,7 @@ import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
 export const isAuthenticated = catchAsyncErrors(async (req, res, next) => {
   let token = req.cookies?.token;
 
-  // अगर cookie में token नहीं है → header से निकालो
+  // Agar cookie me token nahi hai → header se uthao
   if (!token && req.headers.authorization) {
     if (req.headers.authorization.startsWith("Bearer")) {
       token = req.headers.authorization.split(" ")[1];
@@ -14,10 +14,21 @@ export const isAuthenticated = catchAsyncErrors(async (req, res, next) => {
   }
 
   if (!token) {
-    return next(new ErrorHandler("User not authenticated.", 400));
+    return next(new ErrorHandler("User not authenticated.", 401));
   }
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+  // ✅ Secret check
+  if (!process.env.JWT_SECRET_KEY) {
+    throw new Error("JWT_SECRET_KEY is not defined in environment variables.");
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+  } catch (err) {
+    return next(new ErrorHandler("Invalid or expired token.", 401));
+  }
+
   req.user = await User.findById(decoded.id);
 
   if (!req.user) {
