@@ -2,16 +2,22 @@ import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
 import ErrorHandler from "../middlewares/error.js";
 import { User } from "../models/userSchema.js";
 import { v2 as cloudinary } from "cloudinary";
-import { generateToken } from "../utils/jwtToken.js";
+import jwt from "jsonwebtoken";
 
-//  Register user
+// ✅ Generate JWT Token (fix)
+const generateToken = (user) => {
+  return jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+};
+
+// ✅ Register user
 export const register = catchAsyncErrors(async (req, res, next) => {
   if (!req.files || Object.keys(req.files).length === 0) {
     return next(new ErrorHandler("Profile Image is required.", 400));
   }
 
   const { profileImage } = req.files;
-
   const allowedFormats = ["image/png", "image/jpeg", "image/webp"];
   if (!allowedFormats.includes(profileImage.mimetype)) {
     return next(new ErrorHandler("Profile image format not supported.", 400));
@@ -74,7 +80,7 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     },
   });
 
-  //  Generate token for frontend
+  // ✅ Generate token
   const token = generateToken(user);
 
   res.status(201).json({
@@ -90,7 +96,7 @@ export const register = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-// Login user
+// ✅ Login user
 export const login = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -108,7 +114,7 @@ export const login = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Invalid credentials.", 400));
   }
 
-  //  Generate token
+  // ✅ Generate token
   const token = generateToken(user);
 
   res.status(200).json({
@@ -124,7 +130,7 @@ export const login = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-//  Get logged in user profile
+// ✅ Get logged in user profile
 export const getProfile = catchAsyncErrors(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("User not found.", 404));
 
@@ -134,7 +140,7 @@ export const getProfile = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-//  Logout user
+// ✅ Logout user
 export const logout = catchAsyncErrors(async (req, res, next) => {
   res
     .status(200)
@@ -145,7 +151,7 @@ export const logout = catchAsyncErrors(async (req, res, next) => {
     .json({ success: true, message: "Logged out successfully." });
 });
 
-//  Fetch leaderboard
+// ✅ Fetch leaderboard
 export const fetchLeaderboard = catchAsyncErrors(async (req, res, next) => {
   try {
     const users = await User.find({ moneySpent: { $gt: 0 } });
