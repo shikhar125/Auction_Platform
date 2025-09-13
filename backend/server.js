@@ -1,3 +1,6 @@
+import dotenv from "dotenv";   // ✅ import dotenv first
+dotenv.config();               // ✅ load environment variables from .env
+
 import app from "./app.js";
 import cloudinary from "cloudinary";
 
@@ -13,13 +16,13 @@ const requiredEnvVars = [
 
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 if (missingVars.length > 0) {
-  console.error('Missing required environment variables:', missingVars);
-  console.error('Please set the following in your .env file:');
+  console.error('❌ Missing required environment variables:', missingVars);
+  console.error('👉 Please set the following in your .env file or Render env vars:');
   missingVars.forEach(varName => console.error(`- ${varName}`));
   process.exit(1);
 }
 
-// Check SMTP configuration for email functionality
+// SMTP configuration (optional)
 const smtpVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_MAIL', 'SMTP_PASSWORD'];
 const smtpConfigured = smtpVars.every(varName => process.env[varName]);
 
@@ -41,6 +44,7 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server listening on port ${process.env.PORT || 5000}`);
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server listening on port ${PORT}`);
 });
